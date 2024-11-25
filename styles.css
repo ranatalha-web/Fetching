@@ -1,0 +1,49 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.listings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.listing-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.3s;
+}
+
+.listing-card:hover {
+    transform: scale(1.05);
+}
+
+.listing-image {
+    width: 350px;
+    height: 350px;
+    object-fit: cover;
+}
+
+.listing-title {
+    padding: 10px;
+    text-align: center;
+}
+
+.loading, .error {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.error {
+    color: red;
+}

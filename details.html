@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listing Details</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f9f9f9;
+        }
+        .listing-detail {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #333;
+            margin-right: 10px;
+        }
+        .detail-content {
+            color: #666;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #error-container {
+            color: red;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #loading-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .price-details {
+            display: flex;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Listing Details</h1>
+    
+    <div id="loading-container">
+        <p>Loading listing details...</p>
+    </div>
+
+    <div id="error-container" style="display: none;"></div>
+    
+    <div id="listingDetails" class="listing-detail" style="display: none;">
+        <!-- Listing details will be dynamically populated here -->
+    </div>
+
+    <button onclick="window.location.href='index.html'">Back to Listings</button>
+
+    <script>
+        async function fetchListingDetails() {
+            // Extract listing ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const listingId = urlParams.get('id');
+
+            // Get DOM elements
+            const loadingContainer = document.getElementById('loading-container');
+            const errorContainer = document.getElementById('error-container');
+            const listingDetailsContainer = document.getElementById('listingDetails');
+
+            // Reset display states
+            loadingContainer.style.display = 'block';
+            errorContainer.style.display = 'none';
+            listingDetailsContainer.style.display = 'none';
+
+            if (!listingId) {
+                showError('No listing ID provided.');
+                return;
+            }
+
+            try {
+                // Fetch conversion rate
+                const exchangeResponse = await fetch(
+                    "https://v6.exchangerate-api.com/v6/dd469c4556431d9b5576d5f2/latest/USD"
+                );
+                const exchangeData = await exchangeResponse.json();
+                const usdToPkrRate = exchangeData.conversion_rates.PKR || 278;
+
+                // Fetch listing details from API
+                const response = await fetch(`/api/listings/${listingId}`);
+                
+                // Check if response is successful
+                if (!response.ok) {
+                    throw new Error('Failed to fetch listing details');
+                }
+
+                const listing = await response.json();
+
+                // Convert price calculations
+                let priceUSD = 'Not Available';
+                let pricePKR = 'Not Available';
+
+                if (listing.price) {
+                    // Remove any non-numeric characters and convert to number
+                    const priceInUSD = parseFloat(String(listing.price).replace(/[^\d.-]/g, ''));
+                    
+                    if (!isNaN(priceInUSD)) {
+                        // Format USD price
+                        priceUSD = `$${priceInUSD.toFixed(2)}`;
+                        
+                        // Calculate PKR price
+                        const priceInPKR = (priceInUSD * usdToPkrRate).toFixed(0);
+                        pricePKR = `PKR ${priceInPKR}`;
+                    }
+                }
+
+                // Populate listing details without image
+                listingDetailsContainer.innerHTML = `
+                    <div>
+                        <h2>${listing.name || 'N/A'}</h2>
+                        
+                        <p>
+                            <span class="detail-label">Description:</span> 
+                            <span class="detail-content">${listing.description || 'No description available'}</span>
+                        </p>
+                        
+                        <p>
+                            <span class="detail-label">House Rules:</span> 
+                            <span class="detail-content">${listing.houseRules || 'No specific house rules'}</span>
+                        </p>
+                        
+                        <p>
+                            <span class="detail-label">Address:</span> 
+                            <span class="detail-content">${listing.address || 'Address not provided'}</span>
+                        </p>
+                        
+                        <p>
+                            <span class="detail-label">Price:</span> 
+                            <div class="price-details">
+                                <span class="detail-content">USD: ${priceUSD}</span>
+                                <span class="detail-content">PKR: ${pricePKR}</span>
+                            </div>
+                        </p>
+                    </div>
+                `;
+
+                // Hide loading, show details
+                loadingContainer.style.display = 'none';
+                listingDetailsContainer.style.display = 'block';
+
+            } catch (error) {
+                // Handle any errors during fetching
+                showError(`Error loading listing details: ${error.message}`);
+            }
+
+            function showError(message) {
+                loadingContainer.style.display = 'none';
+                errorContainer.textContent = message;
+                errorContainer.style.display = 'block';
+            }
+        }
+
+        // Load listing data when page loads
+        window.onload = fetchListingDetails;
+    </script>
+</body>
+</html>
