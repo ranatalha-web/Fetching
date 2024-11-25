@@ -27,6 +27,15 @@
         .detail-content {
             color: #666;
         }
+        .description, .house-rules, .address {
+            font-size: 1.2em; 
+            line-height: 1.6;
+            max-width: 100%;
+        }
+        .price-details {
+            display: flex;
+            gap: 20px;
+        }
         button {
             margin-top: 20px;
             padding: 10px 15px;
@@ -48,9 +57,19 @@
             text-align: center;
             margin-top: 20px;
         }
-        .price-details {
-            display: flex;
-            gap: 20px;
+
+        /* Styles for images gallery */
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .image-gallery img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
         }
     </style>
 </head>
@@ -67,6 +86,10 @@
         <!-- Listing details will be dynamically populated here -->
     </div>
 
+    <div id="image-gallery-container" class="image-gallery" style="display: none;">
+        <!-- Gallery of images will be dynamically populated here -->
+    </div>
+
     <button onclick="window.location.href='index.html'">Back to Listings</button>
 
     <script>
@@ -79,11 +102,13 @@
             const loadingContainer = document.getElementById('loading-container');
             const errorContainer = document.getElementById('error-container');
             const listingDetailsContainer = document.getElementById('listingDetails');
+            const imageGalleryContainer = document.getElementById('image-gallery-container');
 
             // Reset display states
             loadingContainer.style.display = 'block';
             errorContainer.style.display = 'none';
             listingDetailsContainer.style.display = 'none';
+            imageGalleryContainer.style.display = 'none';
 
             if (!listingId) {
                 showError('No listing ID provided.');
@@ -91,77 +116,72 @@
             }
 
             try {
-                // Fetch conversion rate
-                const exchangeResponse = await fetch(
-                    "https://v6.exchangerate-api.com/v6/dd469c4556431d9b5576d5f2/latest/USD"
-                );
-                const exchangeData = await exchangeResponse.json();
-                const usdToPkrRate = exchangeData.conversion_rates.PKR || 278;
-
                 // Fetch listing details from API
                 const response = await fetch(`/api/listings/${listingId}`);
                 
-                // Check if response is successful
                 if (!response.ok) {
                     throw new Error('Failed to fetch listing details');
                 }
 
                 const listing = await response.json();
 
-                // Convert price calculations
+                // Convert price calculations (if applicable)
                 let priceUSD = 'Not Available';
                 let pricePKR = 'Not Available';
 
                 if (listing.price) {
-                    // Remove any non-numeric characters and convert to number
-                    const priceInUSD = parseFloat(String(listing.price).replace(/[^\d.-]/g, ''));
+                    let priceInUSD = 0;
                     
+                    // Check if price is a string and clean it
+                    if (typeof listing.price === 'string') {
+                        priceInUSD = parseFloat(listing.price.replace(/[^\d.-]/g, ''));
+                    }
+                    // If it's a number, use it directly
+                    else if (typeof listing.price === 'number') {
+                        priceInUSD = listing.price;
+                    }
+
+                    // Format the price if it's a valid number
                     if (!isNaN(priceInUSD)) {
-                        // Format USD price
-                        priceUSD = `$${priceInUSD.toFixed(2)}`;
-                        
-                        // Calculate PKR price
-                        const priceInPKR = (priceInUSD * usdToPkrRate).toFixed(0);
-                        pricePKR = `PKR ${priceInPKR}`;
+                        priceUSD = `$${priceInUSD.toFixed(1)}`;
+                        const priceInPKR = (priceInUSD * 278).toFixed(2); // Assuming 1 USD = 278 PKR
+                        pricePKR = priceInPKR.toLocaleString(); // Format with commas
                     }
                 }
 
-                // Populate listing details without image
+                // Populate listing details
                 listingDetailsContainer.innerHTML = `
                     <div>
                         <h2>${listing.name || 'N/A'}</h2>
-                        
-                        <p>
-                            <span class="detail-label">Description:</span> 
-                            <span class="detail-content">${listing.description || 'No description available'}</span>
-                        </p>
-                        
-                        <p>
-                            <span class="detail-label">House Rules:</span> 
-                            <span class="detail-content">${listing.houseRules || 'No specific house rules'}</span>
-                        </p>
-                        
-                        <p>
-                            <span class="detail-label">Address:</span> 
-                            <span class="detail-content">${listing.address || 'Address not provided'}</span>
-                        </p>
-                        
-                        <p>
-                            <span class="detail-label">Price:</span> 
-                            <div class="price-details">
-                                <span class="detail-content">USD: ${priceUSD}</span>
-                                <span class="detail-content">PKR: ${pricePKR}</span>
-                            </div>
-                        </p>
+                        <p><span class="detail-label">Description:</span> <span class="detail-content description">${listing.description || 'No description available'}</span></p>
+                        <p><span class="detail-label">House Rules:</span> <span class="detail-content house-rules">${listing.houseRules || 'No specific house rules'}</span></p>
+                        <p><span class="detail-label">Address:</span> <span class="detail-content address">${listing.address || 'Address not provided'}</span></p>
+                        <p><span class="detail-label">Price:</span> <span class="detail-content">USD: ${priceUSD} OR PKR: ${pricePKR}</span></p>
                     </div>
                 `;
+
+                // Display images if available
+                if (listing.images && listing.images.length > 0) {
+                    const imageElements = listing.images.map(imageUrl => {
+                        const imgElement = document.createElement('img');
+                        imgElement.src = imageUrl;
+                        imgElement.alt = 'Listing Image';
+                        return imgElement;
+                    });
+
+                    imageGalleryContainer.innerHTML = '';
+                    imageElements.forEach(img => imageGalleryContainer.appendChild(img));
+
+                    imageGalleryContainer.style.display = 'grid'; // Show the image gallery
+                } else {
+                    imageGalleryContainer.style.display = 'none'; // Hide if no images are available
+                }
 
                 // Hide loading, show details
                 loadingContainer.style.display = 'none';
                 listingDetailsContainer.style.display = 'block';
 
             } catch (error) {
-                // Handle any errors during fetching
                 showError(`Error loading listing details: ${error.message}`);
             }
 
